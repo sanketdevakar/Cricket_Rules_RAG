@@ -135,6 +135,14 @@ def llm_answer_node(state: RAGState) -> Dict:
     """
     retrieved_chunks = state.retrieved_chunks
     user_question = state.user_question
+    chat_history = state.chat_history
+
+    # Format chat history
+    history_str = ""
+    if chat_history:
+        history_str = "Previous conversation:\n"
+        for turn in chat_history[-3:]:  # Last 3 turns only
+            history_str += f"Human: {turn['user']}\nAssistant: {turn['assistant']}\n"
 
     context_parts = []
     for c in retrieved_chunks:
@@ -143,11 +151,14 @@ def llm_answer_node(state: RAGState) -> Dict:
     context = "\n\n".join(context_parts)
 
     prompt = f"""
-You are a precise cricket laws assistant. Use ONLY the following CONTEXT to answer the QUESTION.
-And present the answer in numerical points if applicable. 
-Cite the relevant law numbers (for example: Law 34) in your answer where applicable. Only cite the laws whose points you have used in your answer.
-If the context does not contain the answer, respond with "I don't know from the given rules." 
+You are a precise cricket laws assistant. Use the CONTEXT and Previous conversation to answer the QUESTION.
+Present the answer in numerical points if applicable.
+Cite the relevant law numbers (for example: Law 34) in your answer where applicable.
+If the context does not contain the answer, respond with "I don't know from the given rules."
+Maintain conversation continuity by referring to previous questions when relevant.
 Do not hallucinate or add facts outside the provided context.
+
+{history_str}
 
 CONTEXT:
 {context}
@@ -159,12 +170,22 @@ FINAL ANSWER (be concise, cite laws inline or at the end):
 """
 
     # Get streaming response using the LLMCaller instance
-    print(" \n -------- FINAL ANSWER -------\n")
+    #print(" \n -------- FINAL ANSWER -------\n")
+    answer_stream = llm_caller.call_llm(prompt, stream=True)
+    
+    # Update chat history
+    state.chat_history.append({
+        "user": user_question,
+        "assistant": "".join(list(answer_stream))  # Convert stream to string for history
+    })
+    
+    # Create new stream for return
     answer_stream = llm_caller.call_llm(prompt, stream=True)
 
     return {
         "user_question": state.user_question,
         "retrieved_chunks": state.retrieved_chunks,
+        "chat_history": state.chat_history,
         "answer": answer_stream
     }
 

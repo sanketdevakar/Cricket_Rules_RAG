@@ -18,6 +18,13 @@ def run_cli():
     print("Cricket Rules RAG (LangGraph) - streaming mode (Groq)")
     print("Type questions about the Laws of Cricket. Type 'exit' to quit.\n")
 
+    # Initialize state at the start
+    state = RAGState(
+        user_question="",
+        retrieved_chunks=None,
+        chat_history=[]
+    )
+
     try:
         while True:
             query = input("\n Question > ").strip()
@@ -27,13 +34,11 @@ def run_cli():
                 print("Goodbye.")
                 break
 
+            # Update state with new question
+            state.user_question = query
+            
             print("\nAnswer (streaming):\n")
-            initial_state = RAGState(user_question=query)
-            
-            # Run the workflow
-            result = workflow.invoke(initial_state)
-
-            
+            result = workflow.invoke(state)
 
             # Handle streaming response
             try:
@@ -45,7 +50,20 @@ def run_cli():
             except Exception as e:
                 print(f"\n\n[Error during generation] {e}\n")
 
+            print("\n\n--- Sources ---")
+            citations = format_citations(result.get("retrieved_chunks", []))
+            if citations:
+                for c in citations:
+                    print(c)
+            else:
+                print("No sources retrieved.")
+
+            # Update state for next turn
+            state = RAGState(
+                chat_history=result["chat_history"]
+            )
             
+            print("\n----------------\n")
 
     except (KeyboardInterrupt, EOFError):
         print("\nExiting...")
