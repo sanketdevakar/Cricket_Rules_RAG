@@ -15,12 +15,12 @@ def format_citations(retrieved_chunks):
     return citations
 
 def run_cli():
-    print("Cricket Rules RAG (LangGraph) - streaming mode (Ollama)")
+    print("Cricket Rules RAG (LangGraph) - streaming mode (Groq)")
     print("Type questions about the Laws of Cricket. Type 'exit' to quit.\n")
 
     try:
         while True:
-            query = input("Question > ").strip()
+            query = input("\n Question > ").strip()
             if not query:
                 continue
             if query.lower() in ("exit", "quit"):
@@ -28,11 +28,12 @@ def run_cli():
                 break
 
             print("\nAnswer (streaming):\n")
-            # Create initial state with just the query
             initial_state = RAGState(user_question=query)
             
             # Run the workflow
             result = workflow.invoke(initial_state)
+
+            
 
             # Handle streaming response
             try:
@@ -44,14 +45,7 @@ def run_cli():
             except Exception as e:
                 print(f"\n\n[Error during generation] {e}\n")
 
-            print("\n\n--- Sources ---")
-            citations = format_citations(result.get("retrieved_chunks", []))
-            if citations:
-                for c in citations:
-                    print(c)
-            else:
-                print("No sources retrieved.")
-            print("\n----------------\n")
+            
 
     except (KeyboardInterrupt, EOFError):
         print("\nExiting...")
