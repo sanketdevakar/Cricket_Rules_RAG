@@ -1,72 +1,99 @@
 from graph.rag_graph import workflow
 from graph.state import RAGState
+import uuid
 
 def format_citations(retrieved_chunks):
     """
-    Build unique citation list (Law X - TITLE) preserving order of first appearance.
+    Build unique citation list (Source and Page) preserving order of first appearance.
     """
     seen = set()
     citations = []
     for c in retrieved_chunks:
-        key = (int(c.get("law_number", -1)), c.get("law_title", "").strip())
+        source = c.get("source", "Unknown Source").strip()
+        page = c.get("page_num", "N/A").strip()
+        key = (source, page)
         if key not in seen:
             seen.add(key)
-            citations.append(f"Law {key[0]} - {key[1]}")
+            citations.append(f"{source} (Page {page})")
     return citations
 
-def run_cli():
-    print("Cricket Rules RAG (LangGraph) - streaming mode (Groq)")
-    print("Type questions about the Laws of Cricket. Type 'exit' to quit.\n")
 
-    # Initialize state at the start
-    state = RAGState(
-        user_question="",
-        retrieved_chunks=None,
-        chat_history=[]
-    )
+def run_cli():
+    print("⚾ Cricket Rules RAG (LangGraph) - Streaming mode (Groq)")
+    print("Ask questions about the Laws of Cricket. Type 'exit' to quit.\n")
+
+    # ✅ Create a unique thread_id for this conversation session
+    # Each user/session should have its own thread_id
+    thread_id = str(uuid.uuid4())
+    print(f"[Session ID: {thread_id}]\n")
+
+    # ✅ Configuration for LangGraph memory
+    config = {
+        "configurable": {
+            "thread_id": thread_id
+        }
+    }
 
     try:
         while True:
-            query = input("\n Question > ").strip()
+            query = input("\nQuestion > ").strip()
             if not query:
                 continue
             if query.lower() in ("exit", "quit"):
-                print("Goodbye.")
+                print("👋 Goodbye.")
                 break
 
-            # Update state with new question
-            state.user_question = query
-            
+            # ✅ Create state for this query
+            state = {
+                "user_question": query,
+                "retrieved_chunks": [],
+                "messages": [],
+                "context_summary": ""
+            }
+
             print("\nAnswer (streaming):\n")
-            result = workflow.invoke(state)
+            result = None
 
-            # Handle streaming response
             try:
-                answer_stream = result["answer"]
-                for chunk in answer_stream:
-                    print(chunk, end="", flush=True)
+                # ✅ Run the workflow with config for memory persistence
+                result = workflow.invoke(state, config=config)
+
+                # ✅ Display the answer
+                if "answer" in result and result["answer"]:
+                    answer_text = result["answer"]
+                    # Display with streaming effect (optional)
+                    for char in answer_text:
+                        print(char, end="", flush=True)
+                        # Optional: add tiny delay for streaming effect
+                        # import time
+                        # time.sleep(0.01)
+                else:
+                    print("[No answer generated or empty response.]")
+
             except KeyboardInterrupt:
-                print("\n\n[Interrupted streaming by user]\n")
+                print("\n\n[⚠️ Interrupted by user]\n")
             except Exception as e:
-                print(f"\n\n[Error during generation] {e}\n")
+                print(f"\n[❌ Error during generation: {e}]\n")
+                import traceback
+                traceback.print_exc()
 
+            # ---------- Sources ----------
             print("\n\n--- Sources ---")
-            citations = format_citations(result.get("retrieved_chunks", []))
-            if citations:
-                for c in citations:
-                    print(c)
+            if result and "retrieved_chunks" in result:
+                citations = format_citations(result.get("retrieved_chunks", []))
+                if citations:
+                    for c in citations:
+                        print("•", c)
+                else:
+                    print("No sources retrieved.")
             else:
-                print("No sources retrieved.")
+                print("No valid result to display sources.")
 
-            # Update state for next turn
-            state = RAGState(
-                chat_history=result["chat_history"]
-            )
-            
             print("\n----------------\n")
 
     except (KeyboardInterrupt, EOFError):
-        print("\nExiting...")
+        print("\nExiting gracefully...")
+
 
 if __name__ == "__main__":
     run_cli()

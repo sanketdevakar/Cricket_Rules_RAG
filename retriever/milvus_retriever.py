@@ -8,12 +8,13 @@ load_dotenv()
 
 ZILLIZ_URI = os.getenv("ZILLIZ_URI")
 ZILLIZ_TOKEN = os.getenv("ZILLIZ_TOKEN")
-COLLECTION_NAME = os.getenv("COLLECTION_NAME", "cricket_rules_subchunks")
+COLLECTION_NAME = os.getenv("COLLECTION_NAME")
+EMBED_MODEL = "sentence-transformers/all-mpnet-base-v2"
 
 class MilvusRetriever:
     def __init__(self, top_k: int = 5):
         self.top_k = top_k
-        self.model = SentenceTransformer("BAAI/bge-large-en")
+        self.model = SentenceTransformer(EMBED_MODEL)
         self.model.max_seq_length = 512
 
         connections.connect(
@@ -35,15 +36,15 @@ class MilvusRetriever:
             anns_field="embedding",
             param={"metric_type": "IP", "params": {"ef": 64}},
             limit=self.top_k,
-            output_fields=["law_number", "law_title", "text"]
+            output_fields=["source", "page_num","text_chunk"]
         )
 
         final_chunks = []
         for hit in results[0]:
             final_chunks.append({
-                "law_number": hit.entity.get("law_number"),
-                "law_title": hit.entity.get("law_title"),
-                "text": hit.entity.get("text"),
+                "source": hit.entity.get("source"),
+                "page_num": hit.entity.get("page_num"),
+                "text_chunk": hit.entity.get("text_chunk"),
                 "score": hit.distance
             })
 
@@ -57,11 +58,13 @@ def milvus_retrieve(state: RAGState) -> dict:
     Returns:
         Dict with updates to state
     """
+    # ✅ Access state as dictionary
+    user_question = state["user_question"]
+    
     retriever = MilvusRetriever(top_k=5)
-    retrieved_chunks = retriever.query(state.user_question)
+    retrieved_chunks = retriever.query(user_question)
     
     # Return updates as a dictionary
     return {
-        "user_question": state.user_question,
         "retrieved_chunks": retrieved_chunks
     }
