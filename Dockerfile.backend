@@ -1,0 +1,74 @@
+# =======================
+#     BUILDER IMAGE
+# =======================
+FROM python:3.10-slim-bookworm AS builder
+
+WORKDIR /app
+
+# Disable unwanted model formats
+ENV TRANSFORMERS_NO_TF=1
+ENV TRANSFORMERS_NO_FLAX=1
+ENV SENTENCE_TRANSFORMERS_HOME=/models
+ENV HF_HOME=/hf-cache
+ENV HF_HUB_DISABLE_SYMLINKS_WARNING=1
+
+# Install system deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential git curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy backend requirements
+COPY backend-requirements.txt .
+
+# Install deps into a clean folder (smaller production image)
+RUN pip install --no-cache-dir --prefix=/install \
+    --extra-index-url https://download.pytorch.org/whl/cpu \
+    -r backend-requirements.txt
+
+# Add installed site-packages to path
+ENV PATH="/install/bin:$PATH"
+ENV PYTHONPATH="/install/lib/python3.10/site-packages:$PYTHONPATH"
+
+# -------- Pre-download ONLY PyTorch model (NO ONNX/TF/Flax) --------
+RUN python - <<EOF
+import os
+os.environ["TRANSFORMERS_NO_TF"] = "1"
+os.environ["TRANSFORMERS_NO_FLAX"] = "1"
+os.environ["SENTENCE_TRANSFORMERS_HOME"] = "/models"
+os.environ["HF_HOME"] = "/hf-cache"
+
+from sentence_transformers import SentenceTransformer
+
+# Download model once
+SentenceTransformer("sentence-transformers/all-mpnet-base-v2")
+
+print("🔥 PyTorch model downloaded successfully! No ONNX/TF/Flax fetched.")
+EOF
+
+# =======================
+#     FINAL IMAGE
+# =======================
+FROM python:3.10-slim-bookworm
+
+WORKDIR /app
+
+# Runtime flags
+ENV TRANSFORMERS_NO_TF=1
+ENV TRANSFORMERS_NO_FLAX=1
+ENV SENTENCE_TRANSFORMERS_HOME=/models
+ENV HF_HOME=/hf-cache
+ENV PYTHONUNBUFFERED=1
+
+# Copy Python packages
+COPY --from=builder /install /usr/local
+
+# Copy HF model cache
+COPY --from=builder /hf-cache /hf-cache
+COPY --from=builder /models /models
+
+# Copy app code
+COPY . .
+
+EXPOSE 8000
+
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]

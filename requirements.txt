@@ -1,4 +1,0 @@
-pymupdf
-sentence-transformers
-pymilvus
-langgraph

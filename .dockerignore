@@ -1,0 +1,41 @@
+# Virtual environments
+venv
+.venv
+
+# Python cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+
+# Logs & runtime files
+*.log
+*.sqlite3
+
+# Git
+.git
+.gitignore
+
+# Environment secrets
+.env
+
+# Local data & unused modules
+data/
+Ingestion/
+milvus/
+
+# Jupyter & PDFs
+*.ipynb
+*.pdf
+
+# Build / Packaging
+dist/
+build/
+*.egg-info/
+
+# OS garbage
+.DS_Store
+Thumbs.db
+
+# Project-specific
+structure.txt

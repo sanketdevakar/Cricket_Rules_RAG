@@ -1,0 +1,23 @@
+# FastAPI and related
+fastapi
+uvicorn
+
+# LangChain stack
+langchain
+langchain-core
+langchain-community
+langchain-groq==0.2.0
+langgraph==0.2.28
+
+# Milvus + dotenv + requests
+pymilvus
+python-dotenv
+requests
+
+# Sentence Transformers & compatible dependencies
+huggingface_hub==0.16.4   # must be compatible with sentence-transformers 2.2.2
+numpy<2                    # to avoid numpy incompatibilities
+sentence-transformers==2.2.2
+
+# CPU-only PyTorch
+torch==2.2.1+cpu -f https://download.pytorch.org/whl/cpu

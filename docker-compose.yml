@@ -1,0 +1,30 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: rag-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env                          # ← LOADS ALL VARIABLES FROM .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - ZILLIZ_URI=${ZILLIZ_URI}      # ← REQUIRED FOR MILVUS/ZILLIZ
+      - ZILLIZ_TOKEN=${ZILLIZ_TOKEN}
+      - COLLECTION_NAME=${COLLECTION_NAME}
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: rag-frontend
+    ports:
+      - "8501:8501"
+    environment:
+      - BACKEND_URL=http://rag-backend:8000
+    depends_on:
+      - backend
+    restart: unless-stopped
