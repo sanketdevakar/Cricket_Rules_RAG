@@ -1,0 +1,80 @@
+name: Build and Publish Docker Images
+
+on:
+  push:
+    branches: ["main"]
+    tags: ["v*"]
+  pull_request:
+
+jobs:
+  build-and-push:
+    name: Build & Push Docker Images
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate Semantic Version
+        id: version
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            VERSION=${GITHUB_REF_NAME}
+          else
+            VERSION="v1.$(date +'%y%m%d').${GITHUB_RUN_NUMBER}"
+          fi
+          SHA_TAG=$(echo $GITHUB_SHA | cut -c1-8)
+
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "SHA_TAG=$SHA_TAG" >> $GITHUB_OUTPUT
+
+      #
+      # ---- Build BACKEND ----
+      #
+      - name: Build Backend Image
+        run: |
+          BACKEND_IMAGE="ghcr.io/${{ github.repository_owner }}/backend"
+          docker build -t $BACKEND_IMAGE:latest -f Dockerfile.backend .
+
+      - name: Push Backend Tags
+        run: |
+          BACKEND_IMAGE="ghcr.io/${{ github.repository_owner }}/backend"
+
+          docker push $BACKEND_IMAGE:latest
+
+          docker tag $BACKEND_IMAGE:latest $BACKEND_IMAGE:${{ steps.version.outputs.VERSION }}
+          docker push $BACKEND_IMAGE:${{ steps.version.outputs.VERSION }}
+
+          docker tag $BACKEND_IMAGE:latest $BACKEND_IMAGE:${{ steps.version.outputs.SHA_TAG }}
+          docker push $BACKEND_IMAGE:${{ steps.version.outputs.SHA_TAG }}
+
+      #
+      # ---- Build FRONTEND ----
+      #
+      - name: Build Frontend Image
+        run: |
+          FRONTEND_IMAGE="ghcr.io/${{ github.repository_owner }}/frontend"
+          docker build -t $FRONTEND_IMAGE:latest -f Dockerfile.frontend .
+
+      - name: Push Frontend Tags
+        run: |
+          FRONTEND_IMAGE="ghcr.io/${{ github.repository_owner }}/frontend"
+
+          docker push $FRONTEND_IMAGE:latest
+
+          docker tag $FRONTEND_IMAGE:latest $FRONTEND_IMAGE:${{ steps.version.outputs.VERSION }}
+          docker push $FRONTEND_IMAGE:${{ steps.version.outputs.VERSION }}
+
+          docker tag $FRONTEND_IMAGE:latest $FRONTEND_IMAGE:${{ steps.version.outputs.SHA_TAG }}
+          docker push $FRONTEND_IMAGE:${{ steps.version.outputs.SHA_TAG }}
