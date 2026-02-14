@@ -3,6 +3,20 @@
 ## Overview
 A Conversational Retrieval-Augmented Generation (RAG) system that provides intelligent responses about cricket laws by combining vector search and large language models.
 
+## 🎥 Demo Video
+
+[▶️ **Watch the Full Demo**](https://github.com/user-attachments/assets/e420b6df-a6b6-42af-8980-2f337c183549)
+
+**What You'll See:**
+- ✨ **Intelligent Retrieval Pipeline** - Semantic search with Milvus + dynamic relevance scoring
+- 💬 **Conversational AI** - Multi-turn dialogue with context awareness
+- 🎯 **Content Grading** - Automated filtering of irrelevant queries
+- 🏗️ **LangGraph Architecture** - Modular StateGraph workflow in action
+- 🐳 **Docker Deployment** - One-command setup from Docker Hub
+- ⚡ **Groq LLM Integration** - Fast response generation
+
+**Duration:** 3-4 minutes | **Topics:** RAG, LangGraph, Vector Search, Docker
+
 ## Architecture
 - **Graph-based Workflow**: Built using LangGraph's StateGraph for modular processing
 - **Vector Database**: Milvus/Zilliz Cloud for semantic search
